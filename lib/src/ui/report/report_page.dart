@@ -1,6 +1,7 @@
 import 'package:sendme_rider/flutter_imports.dart';
 import 'package:sendme_rider/flutter_project_imports.dart';
 import 'package:intl/intl.dart';
+import 'package:sendme_rider/src/ui/common/no_internet_screen.dart';
 
 class ReportPage extends StatefulWidget {
   final int riderId;
@@ -85,9 +86,16 @@ class _ReportPageState extends State<ReportPage> {
       if (mounted) setState(() => summaryList = result);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('$e')));
+        if (e is ApiException && e.message == 'No internet connection') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NoInternetScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('$e')));
+        }
       }
     } finally {
       if (mounted) setState(() => isLoadingSummary = false);
@@ -167,6 +175,14 @@ class _ReportPageState extends State<ReportPage> {
       initialDate: selectedStartDate,
       firstDate: DateTime(2020),
       lastDate: selectedEndDate,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(primary: AppColors.mainAppColor),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null && picked != selectedStartDate) {
       setState(() => selectedStartDate = picked);
@@ -180,6 +196,14 @@ class _ReportPageState extends State<ReportPage> {
       initialDate: selectedEndDate,
       firstDate: selectedStartDate,
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(primary: AppColors.mainAppColor),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null && picked != selectedEndDate) {
       setState(() => selectedEndDate = picked);
@@ -190,16 +214,21 @@ class _ReportPageState extends State<ReportPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Report'),
-        backgroundColor: AppColors.mainAppColor,
-        foregroundColor: Colors.white,
+        title: Text(
+          AppLocalizations.of(context)?.translate('report') ?? 'Report',
+          style: const TextStyle(fontFamily: AssetsFont.textBold, fontSize: 20),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
         automaticallyImplyLeading: false,
       ),
       body: Column(
         children: [
           _buildFilters(),
-          const Divider(height: 1),
           Expanded(
             child: SingleChildScrollView(
               controller: _scrollController,
@@ -207,7 +236,7 @@ class _ReportPageState extends State<ReportPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSummarySection(),
-                  const Divider(height: 1),
+                  const SizedBox(height: 8),
                   _buildTableHeader(),
                   _buildTableBody(),
                 ],
@@ -220,8 +249,20 @@ class _ReportPageState extends State<ReportPage> {
   }
 
   Widget _buildFilters() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           Expanded(
@@ -234,18 +275,23 @@ class _ReportPageState extends State<ReportPage> {
           const SizedBox(width: 8),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(10),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<int>(
                   value: selectedPaymentMode,
                   isExpanded: true,
+                  icon: Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 18,
+                    color: AppColors.mainAppColor,
+                  ),
                   style: TextStyle(
                     fontFamily: AssetsFont.textRegular,
-                    fontSize: 13,
+                    fontSize: 12,
                     color: Colors.black87,
                   ),
                   items: List.generate(
@@ -256,7 +302,7 @@ class _ReportPageState extends State<ReportPage> {
                         _paymentModes[i],
                         style: const TextStyle(
                           fontFamily: AssetsFont.textRegular,
-                          fontSize: 13,
+                          fontSize: 12,
                         ),
                       ),
                     ),
@@ -279,22 +325,23 @@ class _ReportPageState extends State<ReportPage> {
   Widget _buildDateButton(String label, DateTime date, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8),
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today, size: 16, color: AppColors.mainAppColor),
-            const SizedBox(width: 4),
+            Icon(Icons.calendar_today, size: 14, color: AppColors.mainAppColor),
+            const SizedBox(width: 6),
             Expanded(
               child: Text(
                 _displayDateFormat.format(date),
                 style: const TextStyle(
-                  fontFamily: AssetsFont.textRegular,
-                  fontSize: 13,
+                  fontFamily: AssetsFont.textMedium,
+                  fontSize: 12,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -307,9 +354,18 @@ class _ReportPageState extends State<ReportPage> {
 
   Widget _buildSummarySection() {
     if (isLoadingSummary) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Center(child: CircularProgressIndicator()),
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.mainAppColor,
+            ),
+          ),
+        ),
       );
     }
     if (summaryList.isEmpty) return const SizedBox.shrink();
@@ -320,43 +376,47 @@ class _ReportPageState extends State<ReportPage> {
       itemBuilder: (context, index) {
         final item = summaryList[index];
         final currency = item['Currency'] ?? '';
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: Card(
-            elevation: 1,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (currency.toString().isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(
-                        currency.toString(),
-                        style: const TextStyle(
-                          fontFamily: AssetsFont.textBold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  _summaryRow('Total Bill Amount', item['TotalBillAmount']),
-                  _summaryRow(
-                    'Delivery Charge Amount',
-                    item['DeliveryChargeAmount'],
-                  ),
-                  _summaryRow(
-                    'GST on Delivery Charges',
-                    item['GSTOnDeliveryCharge'],
-                  ),
-                  if (item['GSTOnBillAmount'] != null)
-                    _summaryRow('GST on Bill Amount', item['GSTOnBillAmount']),
-                ],
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
-            ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (currency.toString().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    currency.toString(),
+                    style: TextStyle(
+                      fontFamily: AssetsFont.textBold,
+                      fontSize: 14,
+                      color: AppColors.mainAppColor,
+                    ),
+                  ),
+                ),
+              _summaryRow('Total Bill Amount', item['TotalBillAmount']),
+              _summaryRow(
+                'Delivery Charge Amount',
+                item['DeliveryChargeAmount'],
+              ),
+              _summaryRow(
+                'GST on Delivery Charges',
+                item['GSTOnDeliveryCharge'],
+              ),
+              if (item['GSTOnBillAmount'] != null)
+                _summaryRow('GST on Bill Amount', item['GSTOnBillAmount']),
+            ],
           ),
         );
       },
@@ -365,7 +425,7 @@ class _ReportPageState extends State<ReportPage> {
 
   Widget _summaryRow(String label, dynamic value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -374,7 +434,7 @@ class _ReportPageState extends State<ReportPage> {
             style: TextStyle(
               fontFamily: AssetsFont.textRegular,
               fontSize: 13,
-              color: Colors.grey.shade700,
+              color: Colors.grey.shade600,
             ),
           ),
           Text(
@@ -382,6 +442,7 @@ class _ReportPageState extends State<ReportPage> {
             style: const TextStyle(
               fontFamily: AssetsFont.textMedium,
               fontSize: 13,
+              color: AppColors.textColorBold,
             ),
           ),
         ],
@@ -391,13 +452,20 @@ class _ReportPageState extends State<ReportPage> {
 
   Widget _buildTableHeader() {
     return Container(
-      color: AppColors.mainAppColor.withValues(alpha: 0.1),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.mainAppColor.withValues(alpha: 0.08),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(14),
+          topRight: Radius.circular(14),
+        ),
+      ),
       child: const Row(
         children: [
           Expanded(flex: 3, child: _HeaderCell('Order ID')),
           Expanded(flex: 4, child: _HeaderCell('Date')),
-          Expanded(flex: 3, child: _HeaderCell('Delivery Charge')),
+          Expanded(flex: 3, child: _HeaderCell('Delivery')),
           Expanded(flex: 2, child: _HeaderCell('Bill')),
           Expanded(flex: 2, child: _HeaderCell('GST')),
         ],
@@ -407,9 +475,18 @@ class _ReportPageState extends State<ReportPage> {
 
   Widget _buildTableBody() {
     if (isLoadingList) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: Center(child: CircularProgressIndicator()),
+      return Padding(
+        padding: const EdgeInsets.all(32),
+        child: Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.mainAppColor,
+            ),
+          ),
+        ),
       );
     }
     if (reportList.isEmpty) {
@@ -421,93 +498,129 @@ class _ReportPageState extends State<ReportPage> {
             style: TextStyle(
               fontFamily: AssetsFont.textRegular,
               fontSize: 15,
-              color: Colors.grey.shade600,
+              color: Colors.grey.shade500,
             ),
           ),
         ),
       );
     }
-    return Column(
-      children: [
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: reportList.length,
-          itemBuilder: (context, index) {
-            final entry = reportList[index];
-            final orderId = entry['orderId'] ?? '';
-            final orderOn = entry['orderOn']?.toString() ?? '';
-            final deliveryCharge = entry['deliveryCharge'] ?? 0;
-            final totalBill = entry['totalBill'] ?? 0;
-            final gst = entry['commissionOnDeliveryCharge'] ?? 0;
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      '$orderId',
-                      style: const TextStyle(
-                        fontFamily: AssetsFont.textRegular,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 4,
-                    child: Text(
-                      _formatOrderDate(orderOn),
-                      style: const TextStyle(
-                        fontFamily: AssetsFont.textRegular,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      '$deliveryCharge',
-                      style: const TextStyle(
-                        fontFamily: AssetsFont.textRegular,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      '$totalBill',
-                      style: const TextStyle(
-                        fontFamily: AssetsFont.textRegular,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      '$gst',
-                      style: const TextStyle(
-                        fontFamily: AssetsFont.textRegular,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(14),
+          bottomRight: Radius.circular(14),
         ),
-        if (isLoadingMore)
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-      ],
+        ],
+      ),
+      child: Column(
+        children: [
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: reportList.length,
+            itemBuilder: (context, index) {
+              final entry = reportList[index];
+              final orderId = entry['orderId'] ?? '';
+              final orderOn = entry['orderOn']?.toString() ?? '';
+              final deliveryCharge = entry['deliveryCharge'] ?? 0;
+              final totalBill = entry['totalBill'] ?? 0;
+              final gst = entry['commissionOnDeliveryCharge'] ?? 0;
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
+                decoration: BoxDecoration(
+                  border: index < reportList.length - 1
+                      ? Border(bottom: BorderSide(color: Colors.grey.shade100))
+                      : null,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        '$orderId',
+                        style: TextStyle(
+                          fontFamily: AssetsFont.textMedium,
+                          fontSize: 12,
+                          color: AppColors.mainAppColor,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 4,
+                      child: Text(
+                        _formatOrderDate(orderOn),
+                        style: TextStyle(
+                          fontFamily: AssetsFont.textRegular,
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        '$deliveryCharge',
+                        style: const TextStyle(
+                          fontFamily: AssetsFont.textMedium,
+                          fontSize: 12,
+                          color: AppColors.textColorBold,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        '$totalBill',
+                        style: const TextStyle(
+                          fontFamily: AssetsFont.textMedium,
+                          fontSize: 12,
+                          color: AppColors.textColorBold,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        '$gst',
+                        style: TextStyle(
+                          fontFamily: AssetsFont.textRegular,
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          if (isLoadingMore)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.mainAppColor,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -520,10 +633,10 @@ class _HeaderCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: AssetsFont.textBold,
         fontSize: 12,
-        color: Colors.black87,
+        color: AppColors.mainAppColor,
       ),
     );
   }

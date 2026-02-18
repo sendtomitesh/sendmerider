@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:sendme_rider/src/api/api_path.dart';
 import 'package:sendme_rider/src/common/global_constants.dart';
 import 'package:sendme_rider/src/controllers/theme_ui.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:sendme_rider/src/models/review.dart';
 import 'package:sendme_rider/src/models/rider_order.dart';
 import 'package:sendme_rider/src/models/rider_profile.dart';
@@ -157,7 +158,11 @@ class RiderApiService {
       final data =
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
       if (data['Status'] == 1) return data;
-      throw ApiException(data['Message'] as String? ?? 'Unknown error');
+      throw ApiException(
+        data['Message'] as String? ??
+            data['errorMessage'] as String? ??
+            'Unknown error',
+      );
     } on SocketException {
       throw const ApiException('No internet connection');
     } on TimeoutException {
@@ -176,7 +181,11 @@ class RiderApiService {
       final data =
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
       if (data['Status'] == 1) return data;
-      throw ApiException(data['Message'] as String? ?? 'Unknown error');
+      throw ApiException(
+        data['Message'] as String? ??
+            data['errorMessage'] as String? ??
+            'Unknown error',
+      );
     } on SocketException {
       throw const ApiException('No internet connection');
     } on TimeoutException {
@@ -200,6 +209,21 @@ class RiderApiService {
     debugPrint('RiderApiService.fetchRiderProfile response: $data');
     final riderData = data['Data'] as Map<String, dynamic>;
     return RiderProfile.fromJson(riderData);
+  }
+
+  /// Fetch rider profile with full API response for force update / blocked checks.
+  Future<({RiderProfile profile, Map<String, dynamic> rawResponse})>
+  fetchRiderProfileWithMeta({required String mobile}) async {
+    final url =
+        '${ApiPath.switchUser}'
+        'userType=${GlobalConstants.rider}'
+        '&mobileNumber=$mobile'
+        '&deviceType=${GlobalConstants.deviceType}'
+        '&version=${GlobalConstants.appVersion}'
+        '&deviceId=${GlobalConstants.deviceId}';
+    final data = await _get(url);
+    final riderData = data['Data'] as Map<String, dynamic>;
+    return (profile: RiderProfile.fromJson(riderData), rawResponse: data);
   }
 
   Future<
@@ -386,5 +410,59 @@ class RiderApiService {
       pagination: paginationCursor,
       averageRating: averageRating,
     );
+  }
+
+  /// Upload bill image for an order.
+  Future<String> uploadBill({
+    required int orderId,
+    required XFile imageFile,
+  }) async {
+    final bytes = await imageFile.readAsBytes();
+    final base64Image = base64Encode(bytes);
+    final params = {
+      'bucket': GlobalConstants.bucket,
+      'imageURL': 'data:image/jpeg;base64,$base64Image',
+      'OrderId': '$orderId',
+      'userType': '${GlobalConstants.rider}',
+      ..._baseParams(),
+    };
+    final data = await _post(ApiPath.uploadBill, params);
+    return data['Message'] as String? ?? 'Bill uploaded';
+  }
+
+  /// Upload QR payment proof image for an order.
+  Future<String> uploadQRPayment({
+    required int orderId,
+    required XFile imageFile,
+  }) async {
+    final bytes = await imageFile.readAsBytes();
+    final base64Image = base64Encode(bytes);
+    final params = {
+      'bucket': GlobalConstants.bucket,
+      'imageURL': 'data:image/jpeg;base64,$base64Image',
+      'OrderId': '$orderId',
+      ..._baseParams(),
+    };
+    final data = await _post(ApiPath.uploadQRPayment, params);
+    return data['Message'] as String? ?? 'Payment proof uploaded';
+  }
+
+  /// Get dynamic QR code for an order.
+  Future<String> getDynamicQR({
+    required int orderId,
+    required int riderId,
+  }) async {
+    final params = {
+      'OrderId': '$orderId',
+      'riderId': '$riderId',
+      ..._baseParams(),
+    };
+    final data = await _post(ApiPath.getDynamicQR, params);
+    return data['QRString'] as String? ?? '';
+  }
+
+  /// Register device token for push notifications.
+  Future<void> registerDeviceToken({required String url}) async {
+    await _get(url);
   }
 }

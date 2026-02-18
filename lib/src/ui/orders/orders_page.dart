@@ -1,5 +1,8 @@
 import 'package:sendme_rider/flutter_imports.dart';
 import 'package:sendme_rider/flutter_project_imports.dart';
+import 'package:sendme_rider/src/service/location_service.dart';
+import 'package:sendme_rider/src/ui/common/no_internet_screen.dart';
+import 'package:animations/animations.dart';
 
 class OrdersPage extends StatefulWidget {
   final String riderName;
@@ -38,7 +41,6 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   Future<void> _loadRider() async {
-    // If a RiderProfile was passed from RiderBottomNav, use it directly
     if (widget.riderProfile != null) {
       setState(() {
         _rider = widget.riderProfile;
@@ -81,9 +83,16 @@ class _OrdersPageState extends State<OrdersPage> {
       } on ApiException catch (e) {
         debugPrint('OrdersPage._loadRider: ApiException: ${e.message}');
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+        if (e.message == 'No internet connection') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NoInternetScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.message)));
+        }
       }
     }
   }
@@ -130,9 +139,16 @@ class _OrdersPageState extends State<OrdersPage> {
         _isLoading = false;
         _isLoadingMore = false;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      if (e.message == 'No internet connection') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NoInternetScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
+      }
     }
   }
 
@@ -156,6 +172,14 @@ class _OrdersPageState extends State<OrdersPage> {
         _rider = _rider!.copyWith(status: newStatus);
         _isTogglingAvailability = false;
       });
+      if (newStatus == 0) {
+        LocationService.instance.startTracking(
+          riderId: _rider!.id,
+          cityId: _rider!.cityId,
+        );
+      } else {
+        LocationService.instance.stopTracking();
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _isTogglingAvailability = false);
@@ -174,28 +198,13 @@ class _OrdersPageState extends State<OrdersPage> {
     }
   }
 
-  Future<void> _navigateToDetail(RiderOrder order) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => OrderDetailPage(
-          orderId: order.orderId,
-          riderId: _rider!.id,
-          outletId: order.hotelId,
-        ),
-      ),
-    );
-    // Refresh on return in case status was updated
-    _fetchOrders(refresh: true);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       body: SafeArea(
         child: Column(
           children: [
-            // Profile header
             if (_rider != null)
               RiderProfileHeader(
                 riderName: _rider!.name.isNotEmpty
@@ -204,10 +213,9 @@ class _OrdersPageState extends State<OrdersPage> {
                 isAvailable: _rider!.status == 0,
                 isToggling: _isTogglingAvailability,
                 onToggle: _toggleAvailability,
+                imageUrl: _rider!.imageUrl,
               ),
-            // Tab bar
             _buildTabBar(),
-            // Order list
             Expanded(child: _buildOrderList()),
           ],
         ),
@@ -216,17 +224,44 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   Widget _buildTabBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: [
-          _buildTab('Today Orders', 0),
-          const SizedBox(width: 20),
-          _buildTab('All Orders', 1),
-          const Spacer(),
-          IconButton(
-            icon: Icon(Icons.refresh, color: AppColors.mainAppColor),
-            onPressed: () => _fetchOrders(refresh: true),
+          Expanded(
+            child: _buildTab(
+              AppLocalizations.of(context)?.translate('todayOrders') ??
+                  'Today Orders',
+              0,
+            ),
+          ),
+          Expanded(
+            child: _buildTab(
+              AppLocalizations.of(context)?.translate('allOrders') ??
+                  'All Orders',
+              1,
+            ),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: () => _fetchOrders(refresh: true),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.refresh,
+                size: 20,
+                color: AppColors.mainAppColor,
+              ),
+            ),
           ),
         ],
       ),
@@ -237,26 +272,34 @@ class _OrdersPageState extends State<OrdersPage> {
     final isSelected = _tabIndex == index;
     return GestureDetector(
       onTap: () => _onTabChanged(index),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
+        ),
+        child: Center(
+          child: Text(
             label,
             style: TextStyle(
               fontFamily: isSelected
                   ? AssetsFont.textBold
                   : AssetsFont.textMedium,
-              fontSize: 17,
-              color: isSelected ? AppColors.mainAppColor : Colors.grey.shade400,
+              fontSize: 14,
+              color: isSelected ? AppColors.mainAppColor : Colors.grey.shade500,
             ),
           ),
-          const SizedBox(height: 4),
-          Container(
-            width: 30,
-            height: 3,
-            color: isSelected ? AppColors.mainAppColor : Colors.transparent,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -265,22 +308,48 @@ class _OrdersPageState extends State<OrdersPage> {
     if (_isLoading) return const OrderShimmer();
     if (_orders.isEmpty) return _buildEmptyState();
     return RefreshIndicator(
+      color: AppColors.mainAppColor,
       onRefresh: () => _fetchOrders(refresh: true),
       child: ListView.builder(
         controller: _scrollController,
+        padding: const EdgeInsets.only(top: 4, bottom: 16),
         itemCount: _orders.length + (_isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == _orders.length) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.mainAppColor,
+                  ),
+                ),
               ),
             );
           }
-          return OrderCard(
+          return _AnimatedOrderCard(
+            index: index,
             order: _orders[index],
-            onTap: () => _navigateToDetail(_orders[index]),
+            riderId: _rider!.id,
+            tappable: _tabIndex == 0,
+            onResult: (result) {
+              if (!mounted) return;
+              if (result != null && result is int) {
+                final idx = _orders.indexWhere(
+                  (o) => o.orderId == _orders[index].orderId,
+                );
+                if (idx != -1) {
+                  setState(() {
+                    _orders[idx] = _orders[idx].copyWith(orderStatus: result);
+                  });
+                }
+              } else {
+                _fetchOrders(refresh: true);
+              }
+            },
           );
         },
       ),
@@ -295,14 +364,106 @@ class _OrdersPageState extends State<OrdersPage> {
           Image.asset(AssetsImage.noData, width: 120, height: 120),
           const SizedBox(height: 16),
           Text(
-            'No orders found',
+            AppLocalizations.of(context)?.translate('noOrdersFound') ??
+                'No orders found',
             style: TextStyle(
               fontFamily: AssetsFont.textMedium,
               fontSize: 16,
-              color: Colors.grey.shade600,
+              color: Colors.grey.shade500,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: () => _fetchOrders(refresh: true),
+            icon: Icon(Icons.refresh, size: 18, color: AppColors.mainAppColor),
+            label: Text(
+              'Refresh',
+              style: TextStyle(
+                fontFamily: AssetsFont.textMedium,
+                fontSize: 14,
+                color: AppColors.mainAppColor,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Animated order card with staggered fade-in and OpenContainer transition.
+class _AnimatedOrderCard extends StatefulWidget {
+  final int index;
+  final RiderOrder order;
+  final int riderId;
+  final bool tappable;
+  final ValueChanged<dynamic> onResult;
+
+  const _AnimatedOrderCard({
+    required this.index,
+    required this.order,
+    required this.riderId,
+    this.tappable = true,
+    required this.onResult,
+  });
+
+  @override
+  State<_AnimatedOrderCard> createState() => _AnimatedOrderCardState();
+}
+
+class _AnimatedOrderCardState extends State<_AnimatedOrderCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _opacity = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    final delay = Duration(milliseconds: (widget.index.clamp(0, 8)) * 60);
+    Future.delayed(delay, () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(
+        position: _slide,
+        child: widget.tappable
+            ? OpenContainer<int?>(
+                transitionDuration: const Duration(milliseconds: 500),
+                openBuilder: (context, _) => OrderDetailPage(
+                  orderId: widget.order.orderId,
+                  riderId: widget.riderId,
+                  outletId: widget.order.hotelId,
+                ),
+                closedElevation: 0,
+                closedColor: Colors.transparent,
+                openColor: Colors.white,
+                closedBuilder: (context, openContainer) =>
+                    OrderCard(order: widget.order, onTap: openContainer),
+                onClosed: (result) => widget.onResult(result),
+              )
+            : OrderCard(order: widget.order, onTap: null),
       ),
     );
   }

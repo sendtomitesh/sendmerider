@@ -5,12 +5,14 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sendme_rider/flutter_imports.dart';
 import 'package:sendme_rider/flutter_project_imports.dart';
+import 'package:sendme_rider/src/service/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await _initDeviceInfo();
   await _initFirebaseToken();
+  await NotificationService.initialize();
   runApp(const SendmeRiderApp());
 }
 
@@ -52,7 +54,7 @@ class SendmeRiderApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: AppColors.appPrimaryColor,
         primaryColor: AppColors.mainAppColor,
-        fontFamily: AssetsFont.textRegular,
+        fontFamily: AssetsFont.textMedium,
       ),
       localizationsDelegates: const [
         AppLocalizationsDelegate(),
@@ -61,34 +63,27 @@ class SendmeRiderApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const SplashRouter(),
+      home: const _AppEntry(),
     );
   }
 }
 
-class SplashRouter extends StatefulWidget {
-  const SplashRouter({super.key});
+class _AppEntry extends StatefulWidget {
+  const _AppEntry();
 
   @override
-  State<SplashRouter> createState() => _SplashRouterState();
+  State<_AppEntry> createState() => _AppEntryState();
 }
 
-class _SplashRouterState extends State<SplashRouter> {
+class _AppEntryState extends State<_AppEntry> {
   @override
   void initState() {
     super.initState();
-    _showSplashThenNavigate();
+    _navigate();
   }
 
-  Future<void> _showSplashThenNavigate() async {
-    // Show splash for 3 seconds while checking session in parallel
-    final results = await Future.wait([
-      Future.delayed(const Duration(seconds: 3)),
-      PreferencesHelper.isLoggedIn(),
-    ]);
-
-    final loggedIn = results[1] as bool;
-
+  Future<void> _navigate() async {
+    final loggedIn = await PreferencesHelper.isLoggedIn();
     if (!mounted) return;
 
     if (loggedIn) {
@@ -110,16 +105,9 @@ class _SplashRouterState extends State<SplashRouter> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: Image.asset(
-          AssetsImage.sendmeRiderLogo,
-          width: 180,
-          height: 180,
-          fit: BoxFit.contain,
-        ),
-      ),
+      body: SizedBox.shrink(),
     );
   }
 }

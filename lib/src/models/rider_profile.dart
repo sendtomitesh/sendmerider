@@ -8,6 +8,7 @@ class RiderProfile {
   final double longitude;
   final String imageUrl;
   final double averageRatings;
+  final int cityId;
 
   const RiderProfile({
     this.id = 0,
@@ -19,6 +20,7 @@ class RiderProfile {
     this.longitude = 0.0,
     this.imageUrl = '',
     this.averageRatings = 0.0,
+    this.cityId = 0,
   });
 
   factory RiderProfile.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class RiderProfile {
       longitude: _parseDouble(json['Longitude']) ?? 0.0,
       imageUrl: _parseString(json['imageUrl']),
       averageRatings: _parseDouble(json['averageRatings']) ?? 0.0,
+      cityId: _parseInt(json['cityId']) ?? 0,
     );
   }
 
@@ -46,6 +49,7 @@ class RiderProfile {
       'Longitude': longitude,
       'imageUrl': imageUrl,
       'averageRatings': averageRatings,
+      'cityId': cityId,
     };
   }
 
@@ -59,6 +63,7 @@ class RiderProfile {
     double? longitude,
     String? imageUrl,
     double? averageRatings,
+    int? cityId,
   }) {
     return RiderProfile(
       id: id ?? this.id,
@@ -70,6 +75,7 @@ class RiderProfile {
       longitude: longitude ?? this.longitude,
       imageUrl: imageUrl ?? this.imageUrl,
       averageRatings: averageRatings ?? this.averageRatings,
+      cityId: cityId ?? this.cityId,
     );
   }
 

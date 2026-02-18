@@ -1,11 +1,13 @@
 import 'package:sendme_rider/flutter_imports.dart';
 import 'package:sendme_rider/flutter_project_imports.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class RiderProfileHeader extends StatelessWidget {
   final String riderName;
   final bool isAvailable;
   final bool isToggling;
   final VoidCallback onToggle;
+  final String imageUrl;
 
   const RiderProfileHeader({
     super.key,
@@ -13,27 +15,51 @@ class RiderProfileHeader extends StatelessWidget {
     required this.isAvailable,
     this.isToggling = false,
     required this.onToggle,
+    this.imageUrl = '',
   });
 
   Color get _statusColor =>
-      isAvailable ? AppColors.doneStatusColor : AppColors.mainAppColor;
+      isAvailable ? AppColors.doneStatusColor : Colors.red.shade400;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: _statusColor,
-            child: Text(
-              riderName.isNotEmpty ? riderName[0].toUpperCase() : '?',
-              style: const TextStyle(
-                fontFamily: AssetsFont.textBold,
-                fontSize: 20,
-                color: Colors.white,
-              ),
+          // Profile image with availability border
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: _statusColor, width: 2.5),
+            ),
+            child: CircleAvatar(
+              radius: 24,
+              backgroundColor: Colors.grey.shade100,
+              child: imageUrl.isNotEmpty
+                  ? ClipOval(
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) => _defaultAvatar(),
+                        errorWidget: (_, _, _) => _defaultAvatar(),
+                      ),
+                    )
+                  : _defaultAvatar(),
             ),
           ),
           const SizedBox(width: 12),
@@ -45,39 +71,66 @@ class RiderProfileHeader extends StatelessWidget {
                   riderName,
                   style: const TextStyle(
                     fontFamily: AssetsFont.textBold,
-                    fontSize: 20,
+                    fontSize: 18,
                     color: AppColors.textColorBold,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  isAvailable ? 'Available' : 'Unavailable',
-                  style: TextStyle(
-                    fontFamily: AssetsFont.textMedium,
-                    fontSize: 14,
-                    color: _statusColor,
-                  ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _statusColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isAvailable
+                          ? (AppLocalizations.of(
+                                  context,
+                                )?.translate('available') ??
+                                'Available')
+                          : (AppLocalizations.of(
+                                  context,
+                                )?.translate('unavailable') ??
+                                'Unavailable'),
+                      style: TextStyle(
+                        fontFamily: AssetsFont.textMedium,
+                        fontSize: 13,
+                        color: _statusColor,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
           GestureDetector(
             onTap: isToggling ? null : onToggle,
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: _statusColor,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: _statusColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: isToggling
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+                  ? Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: _statusColor,
+                        ),
                       ),
                     )
-                  : const Icon(
+                  : Icon(
                       Icons.power_settings_new,
-                      color: Colors.white,
+                      color: _statusColor,
                       size: 22,
                     ),
             ),
@@ -85,5 +138,9 @@ class RiderProfileHeader extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _defaultAvatar() {
+    return Icon(Icons.person, size: 28, color: Colors.grey.shade400);
   }
 }

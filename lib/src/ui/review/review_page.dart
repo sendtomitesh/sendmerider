@@ -113,11 +113,15 @@ class _ReviewPageState extends State<ReviewPage> {
       mainAxisSize: MainAxisSize.min,
       children: List.generate(5, (index) {
         if (index < rating.floor()) {
-          return Icon(Icons.star, size: size, color: Colors.amber);
+          return Icon(Icons.star_rounded, size: size, color: Colors.amber);
         } else if (index < rating) {
-          return Icon(Icons.star_half, size: size, color: Colors.amber);
+          return Icon(Icons.star_half_rounded, size: size, color: Colors.amber);
         }
-        return Icon(Icons.star_border, size: size, color: Colors.amber);
+        return Icon(
+          Icons.star_outline_rounded,
+          size: size,
+          color: Colors.amber.shade200,
+        );
       }),
     );
   }
@@ -125,10 +129,16 @@ class _ReviewPageState extends State<ReviewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Reviews'),
-        backgroundColor: AppColors.mainAppColor,
-        foregroundColor: Colors.white,
+        title: Text(
+          AppLocalizations.of(context)?.translate('review') ?? 'Reviews',
+          style: const TextStyle(fontFamily: AssetsFont.textBold, fontSize: 20),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
         automaticallyImplyLeading: false,
       ),
       body: isLoading ? _buildShimmer() : _buildContent(),
@@ -139,27 +149,47 @@ class _ReviewPageState extends State<ReviewPage> {
     return Column(
       children: [
         _buildAverageRating(),
-        const Divider(height: 1),
         Expanded(
           child: reviewList.isEmpty
               ? Center(
-                  child: Text(
-                    'No reviews',
-                    style: TextStyle(
-                      fontFamily: AssetsFont.textRegular,
-                      fontSize: 15,
-                      color: Colors.grey.shade600,
-                    ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.star_outline_rounded,
+                        size: 48,
+                        color: Colors.grey.shade300,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No reviews yet',
+                        style: TextStyle(
+                          fontFamily: AssetsFont.textMedium,
+                          fontSize: 16,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ],
                   ),
                 )
               : ListView.builder(
                   controller: _scrollController,
+                  padding: const EdgeInsets.only(bottom: 16),
                   itemCount: reviewList.length + (isLoadingMore ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == reviewList.length) {
-                      return const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Center(child: CircularProgressIndicator()),
+                      return Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.mainAppColor,
+                            ),
+                          ),
+                        ),
                       );
                     }
                     return _buildReviewItem(reviewList[index]);
@@ -171,28 +201,59 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 
   Widget _buildAverageRating() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.mainAppColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.star, color: Colors.amber, size: 24),
-            const SizedBox(width: 8),
-            Text(
-              averageRating.toStringAsFixed(1),
-              style: const TextStyle(
-                fontFamily: AssetsFont.textBold,
-                fontSize: 18,
-              ),
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
-        ),
+            child: const Icon(
+              Icons.star_rounded,
+              color: Colors.amber,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                averageRating.toStringAsFixed(1),
+                style: const TextStyle(
+                  fontFamily: AssetsFont.textBold,
+                  fontSize: 24,
+                  color: AppColors.textColorBold,
+                ),
+              ),
+              Text(
+                'Average Rating',
+                style: TextStyle(
+                  fontFamily: AssetsFont.textRegular,
+                  fontSize: 12,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          _buildStarRating(averageRating, size: 18),
+        ],
       ),
     );
   }
@@ -202,45 +263,82 @@ class _ReviewPageState extends State<ReviewPage> {
     final formattedDate = _formatDate(review.dateTime);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.mainAppColor.withValues(alpha: 0.1),
                 child: Text(
-                  review.userName,
-                  style: const TextStyle(
+                  review.userName.isNotEmpty
+                      ? review.userName[0].toUpperCase()
+                      : '?',
+                  style: TextStyle(
                     fontFamily: AssetsFont.textBold,
                     fontSize: 14,
+                    color: AppColors.mainAppColor,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(
-                formattedDate,
-                style: TextStyle(
-                  fontFamily: AssetsFont.textRegular,
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      review.userName,
+                      style: const TextStyle(
+                        fontFamily: AssetsFont.textMedium,
+                        fontSize: 14,
+                        color: AppColors.textColorBold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    _buildStarRating(review.rating, size: 14),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  formattedDate,
+                  style: TextStyle(
+                    fontFamily: AssetsFont.textRegular,
+                    fontSize: 11,
+                    color: Colors.grey.shade500,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          _buildStarRating(review.rating),
           if (decodedComment.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
             Text(
               decodedComment,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AssetsFont.textRegular,
                 fontSize: 13,
+                color: Colors.grey.shade700,
               ),
             ),
           ],
@@ -251,58 +349,125 @@ class _ReviewPageState extends State<ReviewPage> {
 
   Widget _buildShimmer() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Average rating skeleton
           Container(
-            width: 100,
-            height: 40,
+            width: double.infinity,
+            height: 80,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: 80,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          // Review card skeletons
           ...List.generate(4, (_) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 150,
-                    height: 14,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(4),
+                      color: Colors.grey.shade200,
+                      shape: BoxShape.circle,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: 100,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    width: 200,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(4),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          width: 80,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

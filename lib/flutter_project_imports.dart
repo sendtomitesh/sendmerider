@@ -15,6 +15,7 @@ export 'package:sendme_rider/src/ui/report/report_page.dart';
 export 'package:sendme_rider/src/ui/review/review_page.dart';
 export 'package:sendme_rider/src/ui/profile/profile_page.dart';
 export 'package:sendme_rider/src/models/rider_order.dart';
+export 'package:sendme_rider/src/models/order_detail_item.dart';
 export 'package:sendme_rider/src/models/rider_profile.dart';
 export 'package:sendme_rider/src/models/review.dart';
 export 'package:sendme_rider/src/api/rider_api_service.dart';

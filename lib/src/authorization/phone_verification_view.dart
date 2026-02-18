@@ -111,10 +111,22 @@ class _PhoneVerificationViewState extends State<PhoneVerificationView> {
                     fontSize: 19,
                   ),
                   border: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.mainAppColor),
-                    borderRadius: BorderRadius.circular(5),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                    borderRadius: BorderRadius.circular(12),
                     gapPadding: 5.0,
                   ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                    borderRadius: BorderRadius.circular(12),
+                    gapPadding: 5.0,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.mainAppColor),
+                    borderRadius: BorderRadius.circular(12),
+                    gapPadding: 5.0,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
                 onChanged: (phone) {
                   setState(() {
@@ -142,8 +154,9 @@ class _PhoneVerificationViewState extends State<PhoneVerificationView> {
                   backgroundColor: isButtonEnabled
                       ? AppColors.mainAppColor
                       : AppColors.mainAppColor.withValues(alpha: 0.5),
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 child: progress
@@ -314,13 +327,13 @@ class _PhoneVerificationViewState extends State<PhoneVerificationView> {
               animationType: AnimationType.fade,
               pinTheme: PinTheme(
                 shape: PinCodeFieldShape.box,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 borderWidth: 1,
                 fieldHeight: 50,
                 fieldWidth: 40,
                 activeFillColor: Colors.white,
-                inactiveColor: Colors.grey.shade400,
-                activeColor: Colors.grey.shade400,
+                inactiveColor: Colors.grey.shade200,
+                activeColor: AppColors.mainAppColor,
                 inactiveFillColor: Colors.white,
                 selectedFillColor: Colors.white,
                 selectedColor: AppColors.mainAppColor,
@@ -423,8 +436,9 @@ class _PhoneVerificationViewState extends State<PhoneVerificationView> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.mainAppColor,
+              elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
             child: progress

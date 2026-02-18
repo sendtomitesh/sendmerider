@@ -7,8 +7,9 @@ class OrderShimmer extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(top: 4, bottom: 16),
       itemCount: 5,
-      itemBuilder: (_, __) => _buildShimmerCard(),
+      itemBuilder: (_, _) => _buildShimmerCard(),
     );
   }
 
@@ -16,21 +17,26 @@ class OrderShimmer extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title row: hotel name + icon placeholder
             Row(
               children: [
                 Expanded(
                   child: Container(
-                    height: 18,
+                    height: 16,
                     decoration: BoxDecoration(
                       color: Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(4),
@@ -39,29 +45,28 @@ class OrderShimmer extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Container(
-                  width: 30,
-                  height: 30,
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(6),
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            // Order ID line
+            const SizedBox(height: 10),
             Container(
-              height: 13,
+              height: 12,
               width: 140,
               decoration: BoxDecoration(
                 color: Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-            const SizedBox(height: 12),
-            Divider(color: Colors.grey.shade200, height: 1),
-            const SizedBox(height: 12),
-            // User name + area row
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Divider(height: 1, color: Colors.grey.shade100),
+            ),
             Row(
               children: [
                 Expanded(
@@ -75,7 +80,7 @@ class OrderShimmer extends StatelessWidget {
                 ),
                 const SizedBox(width: 24),
                 Container(
-                  height: 13,
+                  height: 12,
                   width: 80,
                   decoration: BoxDecoration(
                     color: Colors.grey.shade200,
@@ -84,8 +89,7 @@ class OrderShimmer extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            // Order date line
+            const SizedBox(height: 10),
             Container(
               height: 12,
               width: 180,
@@ -94,18 +98,18 @@ class OrderShimmer extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-            const SizedBox(height: 12),
-            Divider(color: Colors.grey.shade200, height: 1),
-            const SizedBox(height: 12),
-            // Bottom row: badge + amount
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Divider(height: 1, color: Colors.grey.shade100),
+            ),
             Row(
               children: [
                 Container(
-                  height: 24,
+                  height: 26,
                   width: 70,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(6),
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 const Spacer(),

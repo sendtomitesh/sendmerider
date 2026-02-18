@@ -16,110 +16,251 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  RiderProfile? _rider;
   late bool _isAvailable;
   bool _isTogglingAvailability = false;
+  bool _isLoading = true;
   final _apiService = RiderApiService();
 
   @override
   void initState() {
     super.initState();
     _isAvailable = widget.rider.status == 0;
+    _loadProfile();
   }
 
   @override
   void didUpdateWidget(covariant ProfilePage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.rider.status != widget.rider.status) {
-      _isAvailable = widget.rider.status == 0;
+    if (oldWidget.rider.id != widget.rider.id) {
+      _loadProfile();
     }
   }
 
-  Future<void> _toggleAvailability(bool value) async {
-    final previousValue = _isAvailable;
-    final newStatus = value ? 0 : 1;
+  Future<void> _loadProfile() async {
+    setState(() => _isLoading = true);
+    try {
+      final saved = await PreferencesHelper.getSavedRider();
+      if (saved == null || (saved.mobile ?? '').isEmpty) {
+        if (mounted)
+          setState(() {
+            _rider = widget.rider;
+            _isLoading = false;
+          });
+        return;
+      }
+      final fresh = await _apiService.fetchRiderProfile(mobile: saved.mobile!);
+      if (!mounted) return;
+      final r = fresh.copyWith(
+        name: fresh.name.isNotEmpty ? fresh.name : widget.rider.name,
+      );
+      setState(() {
+        _rider = r;
+        _isAvailable = r.status == 0;
+        _isLoading = false;
+      });
+      widget.onRiderUpdated(r);
+    } catch (_) {
+      if (mounted)
+        setState(() {
+          _rider = widget.rider;
+          _isLoading = false;
+        });
+    }
+  }
 
-    setState(() {
-      _isAvailable = value;
-      _isTogglingAvailability = true;
-    });
-
+  Future<void> _toggleAvailability() async {
+    if (_rider == null || _isTogglingAvailability) return;
+    final newStatus = _isAvailable
+        ? 1
+        : 0; // toggle: 0=available, 1=unavailable
+    setState(() => _isTogglingAvailability = true);
     try {
       await _apiService.updateRiderAvailability(
-        rider: widget.rider,
+        rider: _rider!,
         status: newStatus,
       );
-      final updatedRider = widget.rider.copyWith(status: newStatus);
-      widget.onRiderUpdated(updatedRider);
+      if (!mounted) return;
+      final updated = _rider!.copyWith(status: newStatus);
+      setState(() {
+        _rider = updated;
+        _isAvailable = !_isAvailable;
+        _isTogglingAvailability = false;
+      });
+      widget.onRiderUpdated(updated);
     } catch (e) {
-      if (mounted) {
-        setState(() => _isAvailable = previousValue);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update availability: $e'),
-            backgroundColor: Colors.red.shade600,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isTogglingAvailability = false);
-      }
+      if (!mounted) return;
+      setState(() => _isTogglingAvailability = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to update availability')));
     }
   }
 
   Future<void> _logout() async {
-    try {
-      await PreferencesHelper.clearSession();
-    } catch (_) {
-      // Best effort — still navigate to login
-    }
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-        (route) => false,
-      );
-    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Logout',
+          style: TextStyle(fontFamily: AssetsFont.textBold, fontSize: 18),
+        ),
+        content: Text(
+          'Are you sure you want to logout?',
+          style: TextStyle(fontFamily: AssetsFont.textRegular, fontSize: 14),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                fontFamily: AssetsFont.textMedium,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Logout',
+              style: TextStyle(
+                fontFamily: AssetsFont.textMedium,
+                color: Colors.red,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    await PreferencesHelper.clearSession();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (route) => false,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final rider = widget.rider;
-
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Profile'),
-        backgroundColor: AppColors.mainAppColor,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
+        title: Text(
+          AppLocalizations.of(context)?.translate('profile') ?? 'Profile',
+          style: const TextStyle(fontFamily: AssetsFont.textBold, fontSize: 20),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Column(
-          children: [
-            // Profile image
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: AppColors.mainAppColor.withValues(alpha: 0.1),
-              backgroundImage: rider.imageUrl.isNotEmpty
-                  ? NetworkImage(rider.imageUrl)
-                  : null,
-              child: rider.imageUrl.isEmpty
-                  ? Icon(Icons.person, size: 50, color: AppColors.mainAppColor)
-                  : null,
-            ),
-            const SizedBox(height: 16),
+      body: _isLoading ? _buildSkeleton() : _buildContent(),
+    );
+  }
 
-            // Name
-            Text(
-              rider.name,
-              style: const TextStyle(
-                fontFamily: AssetsFont.textBold,
-                fontSize: 22,
-              ),
+  Widget _buildSkeleton() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          // Avatar skeleton
+          Container(
+            width: 90,
+            height: 90,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              shape: BoxShape.circle,
             ),
+          ),
+          const SizedBox(height: 16),
+          // Name skeleton
+          Container(
+            width: 150,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Email skeleton
+          Container(
+            width: 200,
+            height: 14,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: 30),
+          // Info card skeleton
+          Container(
+            width: double.infinity,
+            height: 160,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Toggle skeleton
+          Container(
+            width: double.infinity,
+            height: 64,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Logout skeleton
+          Container(
+            width: double.infinity,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    final rider = _rider ?? widget.rider;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          // Avatar
+          CircleAvatar(
+            radius: 45,
+            backgroundColor: AppColors.mainAppColor.withValues(alpha: 0.1),
+            backgroundImage: rider.imageUrl.isNotEmpty
+                ? NetworkImage(rider.imageUrl)
+                : null,
+            child: rider.imageUrl.isEmpty
+                ? Icon(Icons.person, size: 45, color: AppColors.mainAppColor)
+                : null,
+          ),
+          const SizedBox(height: 16),
+          // Name
+          Text(
+            rider.name.isNotEmpty ? rider.name : 'Rider',
+            style: const TextStyle(
+              fontFamily: AssetsFont.textBold,
+              fontSize: 22,
+              color: AppColors.textColorBold,
+            ),
+          ),
+          if (rider.email.isNotEmpty) ...[
             const SizedBox(height: 4),
-
-            // Email
             Text(
               rider.email,
               style: TextStyle(
@@ -128,65 +269,94 @@ class _ProfilePageState extends State<ProfilePage> {
                 color: Colors.grey.shade600,
               ),
             ),
-            const SizedBox(height: 24),
-
-            // Info card
-            _buildInfoCard(rider),
-            const SizedBox(height: 16),
-
-            // Availability toggle
-            _buildAvailabilityToggle(),
-            const SizedBox(height: 32),
-
-            // Logout button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout, color: Colors.red),
-                label: const Text(
-                  'Logout',
-                  style: TextStyle(
+          ],
+          const SizedBox(height: 8),
+          // Rating
+          if (rider.averageRatings > 0)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+                const SizedBox(width: 4),
+                Text(
+                  rider.averageRatings.toStringAsFixed(1),
+                  style: const TextStyle(
                     fontFamily: AssetsFont.textMedium,
-                    fontSize: 16,
-                    color: Colors.red,
+                    fontSize: 14,
+                    color: AppColors.textColorBold,
                   ),
                 ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+              ],
+            ),
+          const SizedBox(height: 30),
+          // Info card
+          _buildInfoCard(rider),
+          const SizedBox(height: 20),
+          // Availability toggle
+          _buildAvailabilityToggle(),
+          const SizedBox(height: 20),
+          // Logout button
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: _logout,
+              icon: const Icon(Icons.logout_rounded, color: Colors.red),
+              label: Text(
+                AppLocalizations.of(context)?.translate('logout') ?? 'Logout',
+                style: const TextStyle(
+                  fontFamily: AssetsFont.textMedium,
+                  fontSize: 16,
+                  color: Colors.red,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.red.shade200),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 40),
+        ],
       ),
     );
   }
 
   Widget _buildInfoCard(RiderProfile rider) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _infoRow(Icons.phone, 'Contact', rider.contact),
-            const Divider(height: 24),
-            _infoRow(Icons.email_outlined, 'Email', rider.email),
-            const Divider(height: 24),
-            _infoRow(
-              Icons.star,
-              'Rating',
-              rider.averageRatings.toStringAsFixed(1),
-              iconColor: Colors.amber,
-            ),
-          ],
-        ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _infoRow(Icons.phone_outlined, 'Phone', rider.contact),
+          Divider(height: 24, color: Colors.grey.shade100),
+          _infoRow(
+            Icons.email_outlined,
+            'Email',
+            rider.email.isNotEmpty ? rider.email : '-',
+          ),
+          Divider(height: 24, color: Colors.grey.shade100),
+          _infoRow(
+            Icons.circle,
+            'Status',
+            _isAvailable ? 'Available' : 'Unavailable',
+            valueColor: _isAvailable ? Colors.green : Colors.red,
+            iconSize: 10,
+          ),
+        ],
       ),
     );
   }
@@ -195,30 +365,35 @@ class _ProfilePageState extends State<ProfilePage> {
     IconData icon,
     String label,
     String value, {
-    Color? iconColor,
+    Color? valueColor,
+    double iconSize = 20,
   }) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: iconColor ?? AppColors.mainAppColor),
+        Icon(icon, size: iconSize, color: AppColors.mainAppColor),
         const SizedBox(width: 12),
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: AssetsFont.textMedium,
-            fontSize: 14,
-            color: Colors.grey.shade600,
-          ),
-        ),
-        const Spacer(),
-        Flexible(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontFamily: AssetsFont.textMedium,
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.end,
-            overflow: TextOverflow.ellipsis,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: AssetsFont.textRegular,
+                  fontSize: 12,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  fontFamily: AssetsFont.textMedium,
+                  fontSize: 15,
+                  color: valueColor ?? AppColors.textColorBold,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -226,43 +401,49 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildAvailabilityToggle() {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Icon(
-              _isAvailable ? Icons.check_circle : Icons.cancel,
-              color: _isAvailable ? Colors.green : Colors.red,
-              size: 20,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _isAvailable ? Icons.check_circle_outline : Icons.cancel_outlined,
+            color: _isAvailable ? Colors.green : Colors.red,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _isAvailable ? 'Available for orders' : 'Unavailable',
+              style: const TextStyle(
+                fontFamily: AssetsFont.textMedium,
+                fontSize: 15,
+                color: AppColors.textColorBold,
+              ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                _isAvailable ? 'Available' : 'Unavailable',
-                style: const TextStyle(
-                  fontFamily: AssetsFont.textMedium,
-                  fontSize: 15,
+          ),
+          _isTogglingAvailability
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Switch(
+                  value: _isAvailable,
+                  onChanged: (_) => _toggleAvailability(),
+                  activeColor: AppColors.mainAppColor,
                 ),
-              ),
-            ),
-            if (_isTogglingAvailability)
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else
-              Switch(
-                value: _isAvailable,
-                onChanged: _toggleAvailability,
-                activeTrackColor: AppColors.mainAppColor.withValues(alpha: 0.5),
-                activeThumbColor: AppColors.mainAppColor,
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
