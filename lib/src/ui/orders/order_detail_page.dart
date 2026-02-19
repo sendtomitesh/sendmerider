@@ -99,8 +99,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
   Future<void> _callPhone(String phone) async {
     if (phone.isEmpty) return;
-    final uri = Uri.parse('tel://$phone');
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
+    final uri = Uri.parse('tel:$phone');
+    try {
+      await launchUrl(uri);
+    } catch (_) {}
   }
 
   Future<void> _openMap(double lat, double lng) async {
@@ -108,8 +110,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     final uri = Uri.parse(
       'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
     );
-    if (await canLaunchUrl(uri)) {
+    try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // Fallback — try without external mode
+      await launchUrl(uri);
     }
   }
 
@@ -196,6 +201,20 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   }
 
   String _fmtCur(double v) => v.toStringAsFixed(2);
+
+  /// Pick the most relevant date for the status banner
+  String _bannerDate(RiderOrder o) {
+    if (o.orderStatus == GlobalConstants.orderDelivered &&
+        o.deliveredAt.isNotEmpty) {
+      return _fmtDate(o.deliveredAt);
+    }
+    if (o.orderStatus == GlobalConstants.orderPicked &&
+        o.deliveryOn.isNotEmpty) {
+      return _fmtDate(o.deliveryOn);
+    }
+    if (o.orderOn.isNotEmpty) return _fmtDate(o.orderOn);
+    return '';
+  }
 
   bool _isCancelled(int s) =>
       s == GlobalConstants.userCancelled ||
@@ -419,9 +438,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               ),
             ),
           ),
-          if (o.orderOn.isNotEmpty)
+          if (_bannerDate(o).isNotEmpty)
             Text(
-              _fmtDate(o.orderOn),
+              _bannerDate(o),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.85),
                 fontSize: 11,
@@ -432,10 +451,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       ),
     );
   }
-
-  // ═══════════════════════════════════════════════════════════
-  // ACTION BUTTON
-  // ═══════════════════════════════════════════════════════════
 
   Widget _actionButton(RiderOrder o) {
     if (o.orderStatus == GlobalConstants.orderDelivered ||
