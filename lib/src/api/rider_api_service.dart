@@ -461,6 +461,20 @@ class RiderApiService {
     return data['QRString'] as String? ?? '';
   }
 
+  /// Fire-and-forget authenticated GET request
+  Future<void> fireAndForgetGet({required String url}) async {
+    try {
+      final headers = await _authHeaders();
+      final extraParams = await _extraGetParams();
+      final fullUrl = '$url$extraParams';
+      debugPrint('RiderApiService.fireAndForgetGet: $fullUrl');
+      final response = await _client.get(Uri.parse(fullUrl), headers: headers);
+      debugPrint('RiderApiService.fireAndForgetGet -> ${response.statusCode}');
+    } catch (e) {
+      debugPrint('RiderApiService.fireAndForgetGet error: $e');
+    }
+  }
+
   /// Register device token for push notifications.
   Future<void> registerDeviceToken({required String url}) async {
     await _get(url);

@@ -26,6 +26,7 @@ class _RiderBottomNavState extends State<RiderBottomNav> {
   StreamSubscription<bool>? _connectivitySub;
   bool _isShowingNoInternet = false;
   bool _isShowingLocationScreen = false;
+  List<Widget>? _pages;
 
   @override
   void initState() {
@@ -268,6 +269,7 @@ class _RiderBottomNavState extends State<RiderBottomNav> {
       LocationService.instance.startTracking(
         riderId: _rider!.id,
         cityId: _rider!.cityId,
+        phoneNumber: _rider!.contact,
       );
     } else {
       // Unavailable — stop tracking
@@ -276,12 +278,13 @@ class _RiderBottomNavState extends State<RiderBottomNav> {
   }
 
   List<Widget> _buildPages() {
-    return [
+    _pages ??= [
       OrdersPage(riderName: _rider!.name, riderProfile: _rider),
       ReportPage(riderId: _rider!.id),
       ReviewPage(riderId: _rider!.id),
       ProfilePage(rider: _rider!, onRiderUpdated: _onRiderUpdated),
     ];
+    return _pages!;
   }
 
   @override
@@ -356,7 +359,7 @@ class _RiderBottomNavState extends State<RiderBottomNav> {
         }
       },
       child: Scaffold(
-        body: pages[_currentIndex],
+        body: IndexedStack(index: _currentIndex, children: pages),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: Colors.white,

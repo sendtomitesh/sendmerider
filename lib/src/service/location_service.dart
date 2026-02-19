@@ -1,19 +1,21 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:sendme_rider/src/api/api_path.dart';
+import 'package:sendme_rider/src/api/rider_api_service.dart';
 import 'package:sendme_rider/src/common/global_constants.dart';
 
 class LocationService {
   LocationService._();
   static final LocationService instance = LocationService._();
 
+  final RiderApiService _apiService = RiderApiService();
   Timer? _timer;
   Timer? _permissionTimer;
   int? _riderId;
   int? _cityId;
+  String? _phoneNumber;
   bool _isTracking = false;
 
   bool get isTracking => _isTracking;
@@ -93,10 +95,12 @@ class LocationService {
   Future<void> startTracking({
     required int riderId,
     required int cityId,
+    required String phoneNumber,
   }) async {
     if (_isTracking) return;
     _riderId = riderId;
     _cityId = cityId;
+    _phoneNumber = phoneNumber;
     _isTracking = true;
 
     // Send immediately, then every 60 seconds (matching original app's Timer.periodic 60000ms)
@@ -164,12 +168,11 @@ class LocationService {
           '&deviceId=${GlobalConstants.deviceId}'
           '&userType=${GlobalConstants.rider}'
           '&deviceType=${GlobalConstants.deviceType}'
-          '&version=${GlobalConstants.appVersion}';
+          '&version=${GlobalConstants.appVersion}'
+          '&phoneNumberLogs=${_phoneNumber ?? ''}';
 
-      final response = await http.get(Uri.parse(url));
-      debugPrint(
-        'LocationService: sent location ($lat, $lng) -> ${response.statusCode}',
-      );
+      await _apiService.fireAndForgetGet(url: url);
+      debugPrint('LocationService: sent location ($lat, $lng)');
     } catch (e) {
       debugPrint('LocationService: failed to send location: $e');
     }

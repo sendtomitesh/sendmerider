@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 /// Lightweight internet connectivity checker.
-/// Uses a DNS lookup to verify actual internet access.
+/// Uses DNS lookups with multiple hosts to avoid false negatives.
 class ConnectivityService {
   ConnectivityService._();
   static final ConnectivityService instance = ConnectivityService._();
@@ -11,6 +11,7 @@ class ConnectivityService {
   final _controller = StreamController<bool>.broadcast();
   Timer? _timer;
   bool _lastStatus = true;
+  int _consecutiveFailures = 0;
 
   /// Stream of connectivity changes (true = online, false = offline).
   Stream<bool> get onStatusChange => _controller.stream;
@@ -19,19 +20,24 @@ class ConnectivityService {
   bool get isOnline => _lastStatus;
 
   /// Check internet connectivity right now.
+  /// Tries multiple hosts to avoid false negatives from a single DNS failure.
   static Future<bool> checkNow() async {
-    try {
-      final result = await InternetAddress.lookup(
-        'google.com',
-      ).timeout(const Duration(seconds: 5));
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } catch (_) {
-      return false;
+    final hosts = ['google.com', 'cloudflare.com', 'apple.com'];
+    for (final host in hosts) {
+      try {
+        final result = await InternetAddress.lookup(
+          host,
+        ).timeout(const Duration(seconds: 3));
+        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+          return true;
+        }
+      } catch (_) {}
     }
+    return false;
   }
 
   /// Start periodic connectivity monitoring every [seconds] seconds.
-  void startMonitoring({int seconds = 15}) {
+  void startMonitoring({int seconds = 30}) {
     _timer?.cancel();
     _checkAndNotify();
     _timer = Timer.periodic(
@@ -47,12 +53,21 @@ class ConnectivityService {
 
   Future<void> _checkAndNotify() async {
     final online = await checkNow();
-    if (online != _lastStatus) {
-      _lastStatus = online;
-      _controller.add(online);
-      debugPrint(
-        'ConnectivityService: status changed -> ${online ? "online" : "offline"}',
-      );
+    if (online) {
+      _consecutiveFailures = 0;
+      if (!_lastStatus) {
+        _lastStatus = true;
+        _controller.add(true);
+        debugPrint('ConnectivityService: back online');
+      }
+    } else {
+      _consecutiveFailures++;
+      // Only report offline after 2 consecutive failures to avoid false alarms
+      if (_consecutiveFailures >= 2 && _lastStatus) {
+        _lastStatus = false;
+        _controller.add(false);
+        debugPrint('ConnectivityService: offline');
+      }
     }
   }
 

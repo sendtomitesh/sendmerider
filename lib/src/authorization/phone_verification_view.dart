@@ -85,7 +85,7 @@ class _PhoneVerificationViewState extends State<PhoneVerificationView> {
               ),
             ),
             Container(
-              margin: const EdgeInsets.only(top: 10, bottom: 10),
+              margin: const EdgeInsets.only(top: 10, bottom: 2),
               child: IntlPhoneField(
                 enabled: true,
                 controller: textController,
@@ -93,6 +93,10 @@ class _PhoneVerificationViewState extends State<PhoneVerificationView> {
                 dropdownIconPosition: IconPosition.leading,
                 autovalidateMode: AutovalidateMode.disabled,
                 disableLengthCheck: true,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
                 style: TextStyle(
                   color: AppColors.mainAppColor,
                   fontWeight: FontWeight.bold,
@@ -137,6 +141,22 @@ class _PhoneVerificationViewState extends State<PhoneVerificationView> {
                     phoneNumberLength = phone.number.length;
                   });
                 },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 12, bottom: 8),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '$phoneNumberLength/10',
+                  style: TextStyle(
+                    fontFamily: AssetsFont.textMedium,
+                    fontSize: 12,
+                    color: phoneNumberLength == 10
+                        ? AppColors.mainAppColor
+                        : Colors.grey.shade400,
+                  ),
+                ),
               ),
             ),
           ],

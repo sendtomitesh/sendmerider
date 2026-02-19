@@ -13,7 +13,7 @@ class OrdersPage extends StatefulWidget {
   State<OrdersPage> createState() => _OrdersPageState();
 }
 
-class _OrdersPageState extends State<OrdersPage> {
+class _OrdersPageState extends State<OrdersPage> with WidgetsBindingObserver {
   RiderProfile? _rider;
   int _tabIndex = 0; // 0=today, 1=all
   List<RiderOrder> _orders = [];
@@ -25,19 +25,41 @@ class _OrdersPageState extends State<OrdersPage> {
   bool _hasMore = true;
   final _scrollController = ScrollController();
   final _apiService = RiderApiService();
+  StreamSubscription<String>? _notificationSub;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_onScrollEnd);
+    _listenForNotifications();
     _loadRider();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _notificationSub?.cancel();
     _scrollController.removeListener(_onScrollEnd);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Auto-refresh when app comes back to foreground (e.g. after background notification).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted && _rider != null) {
+      _fetchOrders(refresh: true);
+    }
+  }
+
+  /// Listen to notification stream — refresh order list when notification arrives.
+  void _listenForNotifications() {
+    _notificationSub = GlobalConstants.streamController.stream.listen((event) {
+      if (event == 'notification' && mounted && _rider != null) {
+        _fetchOrders(refresh: true);
+      }
+    });
   }
 
   Future<void> _loadRider() async {
@@ -176,6 +198,7 @@ class _OrdersPageState extends State<OrdersPage> {
         LocationService.instance.startTracking(
           riderId: _rider!.id,
           cityId: _rider!.cityId,
+          phoneNumber: _rider!.contact,
         );
       } else {
         LocationService.instance.stopTracking();
