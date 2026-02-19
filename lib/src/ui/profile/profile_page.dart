@@ -1,5 +1,7 @@
 import 'package:sendme_rider/flutter_imports.dart';
 import 'package:sendme_rider/flutter_project_imports.dart';
+import 'package:sendme_rider/src/service/location_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class ProfilePage extends StatefulWidget {
   final RiderProfile rider;
@@ -135,7 +137,16 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
     if (confirm != true || !mounted) return;
+
+    LocationService.instance.stopTracking();
+    LocationService.instance.stopPermissionWatcher();
+
+    try {
+      await FirebaseMessaging.instance.deleteToken();
+    } catch (_) {}
+
     await PreferencesHelper.clearSession();
+
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginPage()),

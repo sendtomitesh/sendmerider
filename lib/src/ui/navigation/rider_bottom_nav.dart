@@ -1,4 +1,5 @@
 import 'package:geolocator/geolocator.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:sendme_rider/flutter_imports.dart';
 import 'package:sendme_rider/flutter_project_imports.dart';
 import 'package:sendme_rider/src/service/location_service.dart';
@@ -125,6 +126,11 @@ class _RiderBottomNavState extends State<RiderBottomNav> {
       // Check if rider is blocked
       final isBlocked = _parseInt(rawResponse['isBlocked']) == 1;
       if (isBlocked) {
+        LocationService.instance.stopTracking();
+        LocationService.instance.stopPermissionWatcher();
+        try {
+          await FirebaseMessaging.instance.deleteToken();
+        } catch (_) {}
         await PreferencesHelper.clearSession();
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
