@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sendme_rider/flutter_imports.dart';
 import 'package:sendme_rider/flutter_project_imports.dart';
+import 'package:sendme_rider/src/service/location_service.dart';
 import 'package:sendme_rider/src/service/notification_service.dart';
 
 Future<void> main() async {
@@ -13,6 +14,11 @@ Future<void> main() async {
   await _initDeviceInfo();
   await _initFirebaseToken();
   await NotificationService.initialize();
+  await LocationService.initializeService();
+  LocationService.cacheAppCredentials(
+    packageName: ThemeUI.appPackageName,
+    password: ThemeUI.appPassword,
+  );
   runApp(const SendmeRiderApp());
 }
 

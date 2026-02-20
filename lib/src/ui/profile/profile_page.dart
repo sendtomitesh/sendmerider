@@ -19,15 +19,12 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   RiderProfile? _rider;
-  late bool _isAvailable;
-  bool _isTogglingAvailability = false;
   bool _isLoading = true;
   final _apiService = RiderApiService();
 
   @override
   void initState() {
     super.initState();
-    _isAvailable = widget.rider.status == 0;
     _loadProfile();
   }
 
@@ -44,11 +41,12 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final saved = await PreferencesHelper.getSavedRider();
       if (saved == null || (saved.mobile ?? '').isEmpty) {
-        if (mounted)
+        if (mounted){
           setState(() {
             _rider = widget.rider;
             _isLoading = false;
           });
+        }
         return;
       }
       final fresh = await _apiService.fetchRiderProfile(mobile: saved.mobile!);
@@ -58,44 +56,16 @@ class _ProfilePageState extends State<ProfilePage> {
       );
       setState(() {
         _rider = r;
-        _isAvailable = r.status == 0;
         _isLoading = false;
       });
       widget.onRiderUpdated(r);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _rider = widget.rider;
           _isLoading = false;
         });
-    }
-  }
-
-  Future<void> _toggleAvailability() async {
-    if (_rider == null || _isTogglingAvailability) return;
-    final newStatus = _isAvailable
-        ? 1
-        : 0; // toggle: 0=available, 1=unavailable
-    setState(() => _isTogglingAvailability = true);
-    try {
-      await _apiService.updateRiderAvailability(
-        rider: _rider!,
-        status: newStatus,
-      );
-      if (!mounted) return;
-      final updated = _rider!.copyWith(status: newStatus);
-      setState(() {
-        _rider = updated;
-        _isAvailable = !_isAvailable;
-        _isTogglingAvailability = false;
-      });
-      widget.onRiderUpdated(updated);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isTogglingAvailability = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to update availability')));
+      }
     }
   }
 
@@ -178,7 +148,6 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         children: [
           const SizedBox(height: 20),
-          // Avatar skeleton
           Container(
             width: 90,
             height: 90,
@@ -188,7 +157,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           const SizedBox(height: 16),
-          // Name skeleton
           Container(
             width: 150,
             height: 20,
@@ -198,7 +166,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           const SizedBox(height: 8),
-          // Email skeleton
           Container(
             width: 200,
             height: 14,
@@ -208,7 +175,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           const SizedBox(height: 30),
-          // Info card skeleton
           Container(
             width: double.infinity,
             height: 160,
@@ -218,17 +184,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           const SizedBox(height: 20),
-          // Toggle skeleton
-          Container(
-            width: double.infinity,
-            height: 64,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Logout skeleton
           Container(
             width: double.infinity,
             height: 50,
@@ -249,7 +204,6 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         children: [
           const SizedBox(height: 20),
-          // Avatar
           CircleAvatar(
             radius: 45,
             backgroundColor: AppColors.mainAppColor.withValues(alpha: 0.1),
@@ -261,7 +215,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 : null,
           ),
           const SizedBox(height: 16),
-          // Name
           Text(
             rider.name.isNotEmpty ? rider.name : 'Rider',
             style: const TextStyle(
@@ -282,7 +235,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ],
           const SizedBox(height: 8),
-          // Rating
           if (rider.averageRatings > 0)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -300,11 +252,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
           const SizedBox(height: 30),
-          // Info card
           _buildInfoCard(rider),
-          const SizedBox(height: 20),
-          // Availability toggle
-          _buildAvailabilityToggle(),
           const SizedBox(height: 20),
           // Logout button
           SizedBox(
@@ -327,6 +275,25 @@ class _ProfilePageState extends State<ProfilePage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // App version & copyright
+          Text(
+            'v${GlobalConstants.appVersion}',
+            style: TextStyle(
+              fontFamily: AssetsFont.textRegular,
+              fontSize: 12,
+              color: Colors.grey.shade500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '© ${DateTime.now().year} SendMe. All rights reserved.',
+            style: TextStyle(
+              fontFamily: AssetsFont.textRegular,
+              fontSize: 11,
+              color: Colors.grey.shade400,
             ),
           ),
           const SizedBox(height: 40),
@@ -359,29 +326,15 @@ class _ProfilePageState extends State<ProfilePage> {
             'Email',
             rider.email.isNotEmpty ? rider.email : '-',
           ),
-          Divider(height: 24, color: Colors.grey.shade100),
-          _infoRow(
-            Icons.circle,
-            'Status',
-            _isAvailable ? 'Available' : 'Unavailable',
-            valueColor: _isAvailable ? Colors.green : Colors.red,
-            iconSize: 10,
-          ),
         ],
       ),
     );
   }
 
-  Widget _infoRow(
-    IconData icon,
-    String label,
-    String value, {
-    Color? valueColor,
-    double iconSize = 20,
-  }) {
+  Widget _infoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: iconSize, color: AppColors.mainAppColor),
+        Icon(icon, size: 20, color: AppColors.mainAppColor),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -398,64 +351,16 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 2),
               Text(
                 value,
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: AssetsFont.textMedium,
                   fontSize: 15,
-                  color: valueColor ?? AppColors.textColorBold,
+                  color: AppColors.textColorBold,
                 ),
               ),
             ],
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildAvailabilityToggle() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(
-            _isAvailable ? Icons.check_circle_outline : Icons.cancel_outlined,
-            color: _isAvailable ? Colors.green : Colors.red,
-            size: 24,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _isAvailable ? 'Available for orders' : 'Unavailable',
-              style: const TextStyle(
-                fontFamily: AssetsFont.textMedium,
-                fontSize: 15,
-                color: AppColors.textColorBold,
-              ),
-            ),
-          ),
-          _isTogglingAvailability
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Switch(
-                  value: _isAvailable,
-                  onChanged: (_) => _toggleAvailability(),
-                  activeColor: AppColors.mainAppColor,
-                ),
-        ],
-      ),
     );
   }
 }

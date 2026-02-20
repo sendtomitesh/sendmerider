@@ -17,7 +17,8 @@ class RiderBottomNav extends StatefulWidget {
   State<RiderBottomNav> createState() => _RiderBottomNavState();
 }
 
-class _RiderBottomNavState extends State<RiderBottomNav> {
+class _RiderBottomNavState extends State<RiderBottomNav>
+    with WidgetsBindingObserver {
   RiderProfile? _rider;
   bool _isLoading = true;
   String? _error;
@@ -32,6 +33,7 @@ class _RiderBottomNavState extends State<RiderBottomNav> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _setupConnectivityMonitor();
     _setupLocationCallbacks();
     _loadRider();
@@ -39,6 +41,7 @@ class _RiderBottomNavState extends State<RiderBottomNav> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     LocationService.instance.onGpsDisabled = null;
     LocationService.instance.onPermissionLost = null;
     LocationService.instance.stopTracking();
@@ -46,6 +49,15 @@ class _RiderBottomNavState extends State<RiderBottomNav> {
     ConnectivityService.instance.stopMonitoring();
     _connectivitySub?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      LocationService.instance.onAppPaused();
+    } else if (state == AppLifecycleState.resumed) {
+      LocationService.instance.onAppResumed();
+    }
   }
 
   /// Listen for GPS/permission loss during tracking (like original app's _checkGps)
@@ -255,7 +267,10 @@ class _RiderBottomNavState extends State<RiderBottomNav> {
   }
 
   void _onRiderUpdated(RiderProfile updated) {
-    setState(() => _rider = updated);
+    setState(() {
+      _rider = updated;
+      _pages = null; // Force rebuild so all pages get the updated rider
+    });
     _updateLocationTracking();
   }
 
@@ -285,7 +300,11 @@ class _RiderBottomNavState extends State<RiderBottomNav> {
 
   List<Widget> _buildPages() {
     _pages ??= [
-      OrdersPage(riderName: _rider!.name, riderProfile: _rider),
+      OrdersPage(
+        riderName: _rider!.name,
+        riderProfile: _rider,
+        onRiderUpdated: _onRiderUpdated,
+      ),
       ReportPage(riderId: _rider!.id),
       ReviewPage(riderId: _rider!.id),
       ProfilePage(rider: _rider!, onRiderUpdated: _onRiderUpdated),

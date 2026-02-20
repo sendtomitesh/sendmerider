@@ -1,13 +1,18 @@
 import 'package:sendme_rider/flutter_imports.dart';
 import 'package:sendme_rider/flutter_project_imports.dart';
-import 'package:sendme_rider/src/service/location_service.dart';
 import 'package:sendme_rider/src/ui/common/no_internet_screen.dart';
 import 'package:animations/animations.dart';
 
 class OrdersPage extends StatefulWidget {
   final String riderName;
   final RiderProfile? riderProfile;
-  const OrdersPage({super.key, required this.riderName, this.riderProfile});
+  final ValueChanged<RiderProfile>? onRiderUpdated;
+  const OrdersPage({
+    super.key,
+    required this.riderName,
+    this.riderProfile,
+    this.onRiderUpdated,
+  });
 
   @override
   State<OrdersPage> createState() => _OrdersPageState();
@@ -190,19 +195,12 @@ class _OrdersPageState extends State<OrdersPage> with WidgetsBindingObserver {
         status: newStatus,
       );
       if (!mounted) return;
+      final updated = _rider!.copyWith(status: newStatus);
       setState(() {
-        _rider = _rider!.copyWith(status: newStatus);
+        _rider = updated;
         _isTogglingAvailability = false;
       });
-      if (newStatus == 0) {
-        LocationService.instance.startTracking(
-          riderId: _rider!.id,
-          cityId: _rider!.cityId,
-          phoneNumber: _rider!.contact,
-        );
-      } else {
-        LocationService.instance.stopTracking();
-      }
+      widget.onRiderUpdated?.call(updated);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _isTogglingAvailability = false);
